@@ -28,6 +28,9 @@ services:
       - ./plugins/:/var/www/html/wp-content/plugins/
       - ./mu-plugins/:/var/www/html/wp-content/mu-plugins/
       - ./.srv/custom.ini:/usr/local/etc/php/conf.d/custom.ini
+
+      # Скрываем node_modules от WordPress
+      - node_modules:/var/www/html/wp-content/plugins/blocks-gamestore/node_modules
     depends_on:
       - mysql
     links:
@@ -48,3 +51,4 @@ services:
 
 volumes:
   wordpress-core:
+  node_modules:
