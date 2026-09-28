@@ -31,7 +31,7 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           source: "./wordpress.zip, ./wpcontent.zip"
-          target: ${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}
+          target: ${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}
 
       - name: Enable Maintenance Mode
         uses: appleboy/scp-action@master
@@ -41,7 +41,7 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           source: ".maintenance"
-          target: ${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}
+          target: ${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}
 
       - name: Update WordPress Core
         uses: appleboy/ssh-action@v1.0.3
@@ -51,11 +51,11 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            find "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}" -type f -name "*.php" ! -name "wp-config.php" -delete
-            rm -r "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/wp-admin/" "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/wp-includes/"
-            unzip -o "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/wordpress.zip" -d "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/"
-            mv "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/wordpress"/* "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/"
-            rm -r "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/wordpress"
+            find "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}" -type f -name "*.php" ! -name "wp-config.php" -delete
+            rm -r "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wp-admin/" "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wp-includes/"
+            unzip -o "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wordpress.zip" -d "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/"
+            mv "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wordpress"/* "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/"
+            rm -r "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wordpress"
 
       - name: Update Plugins and Theme
         uses: appleboy/ssh-action@v1.0.3
@@ -65,8 +65,8 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            rm -rf "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/wp-content/plugins" "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/wp-content/mu-plugins" "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/wp-content/themes"
-            unzip -o "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/wpcontent.zip" -d "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/wp-content/"
+            rm -rf "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wp-content/plugins" "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wp-content/mu-plugins" "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wp-content/themes"
+            unzip -o "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wpcontent.zip" -d "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wp-content/"
 
       - name: Disable Maintenance Mode and Remove zips
         uses: appleboy/ssh-action@v1.0.3
@@ -76,6 +76,6 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            rm -f "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/.maintenance"
-            rm -f "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/wpcontent.zip"
-            rm -f "${{ github.event_name == 'push' && 'public_html/dev.geniuscourses.com' || 'public_html/live.geniuscourses.com' }}/wordpress.zip"
+            rm -f "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/.maintenance"
+            rm -f "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wpcontent.zip"
+            rm -f "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wordpress.zip"
