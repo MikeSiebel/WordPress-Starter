@@ -79,3 +79,4 @@ jobs:
             rm -f "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/.maintenance"
             rm -f "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wpcontent.zip"
             rm -f "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wordpress.zip"
+            
