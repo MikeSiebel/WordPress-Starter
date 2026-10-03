@@ -23,26 +23,46 @@ jobs:
       - name: Prepare plugins and theme zip
         run: zip -r wpcontent.zip plugins mu-plugins themes
 
+      - name: Check deployment files
+        run: |
+          ls -lh wordpress.zip wpcontent.zip
+          test -s wordpress.zip
+          test -s wpcontent.zip
+      - name: Check SSH secrets
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          [ -n "$SSH_HOST" ] && echo "SSH_HOST: OK" || echo "SSH_HOST: EMPTY"
+          [ -n "$SSH_USER" ] && echo "SSH_USER: OK" || echo "SSH_USER: EMPTY"
+          [ -n "$SSH_PASSWORD" ] && echo "SSH_PASSWORD: OK" || echo "SSH_PASSWORD: EMPTY"
+          [ -n "$SSH_PORT" ] && echo "SSH_PORT: OK" || echo "SSH_PORT: EMPTY"
+
       - name: Copy Zips to Server
-        uses: appleboy/scp-action@master
+        uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
-          source: "./wordpress.zip, ./wpcontent.zip"
-          target: ${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}
-
+          source: "wordpress.zip,wpcontent.zip"
+          target: ${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}
       - name: Enable Maintenance Mode
-        uses: appleboy/scp-action@master
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
-          source: ".maintenance"
-          target: ${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}
-
+          script: |
+            cat > "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/.maintenance" <<'EOF'
+            <?php
+            $upgrading = time();
+            ?>
+            EOF
       - name: Update WordPress Core
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -51,11 +71,11 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            find "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}" -type f -name "*.php" ! -name "wp-config.php" -delete
-            rm -r "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wp-admin/" "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wp-includes/"
-            unzip -o "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wordpress.zip" -d "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/"
-            mv "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wordpress"/* "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/"
-            rm -r "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wordpress"
+            find "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}" -type f -name "*.php" ! -name "wp-config.php" -delete
+            rm -rf "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wp-admin/" "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wp-includes/"
+            unzip -o "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wordpress.zip" -d "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/"
+            mv "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wordpress"/* "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/"
+            rm -rf "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wordpress"
 
       - name: Update Plugins and Theme
         uses: appleboy/ssh-action@v1.0.3
@@ -65,9 +85,9 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            rm -rf "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wp-content/plugins" "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wp-content/mu-plugins" "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wp-content/themes"
-            unzip -o "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wpcontent.zip" -d "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wp-content/"
-
+            rm -rf "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wp-content/plugins" "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wp-content/mu-plugins" "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wp-content/themes"
+            unzip -o "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wpcontent.zip" -d "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wp-content/"
+      
       - name: Disable Maintenance Mode and Remove zips
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -76,7 +96,6 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            rm -f "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/.maintenance"
-            rm -f "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wpcontent.zip"
-            rm -f "${{ github.event_name == 'push' && 'public_html/wcdev.mzhitkov.net' || 'public_html/wc.mzhitkov.net' }}/wordpress.zip"
-            
+            rm -f "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/.maintenance"
+            rm -f "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wpcontent.zip"
+            rm -f "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wordpress.zip"
