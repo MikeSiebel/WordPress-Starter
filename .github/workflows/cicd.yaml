@@ -8,15 +8,12 @@ on:
     types: [published]
 
 jobs:
-  deploy:
+  prepare:
     runs-on: ubuntu-latest
-
-    env:
-      DEPLOY_PATH: ${{ github.event_name == 'push' && secrets.DEV_DEPLOY_PATH || secrets.PROD_DEPLOY_PATH }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
 
       - name: Prepare WordPress Zip
         run: |
@@ -32,21 +29,52 @@ jobs:
           test -s wordpress.zip
           test -s wpcontent.zip
 
+  deploy:
+    needs: prepare
+    runs-on: ubuntu-latest
+
+    env:
+      DEPLOY_PATH: ${{ github.event_name == 'push' && secrets.DEV_DEPLOY_PATH || secrets.PROD_DEPLOY_PATH }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Check deployment secrets
+        id: secrets
         shell: bash
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
         run: |
-          [ -n "$SSH_HOST" ] && echo "SSH_HOST: OK" || echo "SSH_HOST: EMPTY"
-          [ -n "$SSH_USER" ] && echo "SSH_USER: OK" || echo "SSH_USER: EMPTY"
-          [ -n "$SSH_PASSWORD" ] && echo "SSH_PASSWORD: OK" || echo "SSH_PASSWORD: EMPTY"
-          [ -n "$SSH_PORT" ] && echo "SSH_PORT: OK" || echo "SSH_PORT: EMPTY"
-          [ -n "$DEPLOY_PATH" ] && echo "DEPLOY_PATH: OK" || echo "DEPLOY_PATH: EMPTY"
+          if [ -n "$SSH_HOST" ] && \
+             [ -n "$SSH_USER" ] && \
+             [ -n "$SSH_PASSWORD" ] && \
+             [ -n "$SSH_PORT" ] && \
+             [ -n "$DEPLOY_PATH" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "Deployment secrets are configured."
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Deployment secrets are not configured."
+            echo "Deployment will be skipped."
+          fi
+
+      - name: Prepare WordPress Zip
+        if: steps.secrets.outputs.configured == 'true'
+        run: |
+          WP_LINK=$(cat wp-version-control.cfg)
+          wget -O "./wordpress.zip" "$WP_LINK"
+
+      - name: Prepare plugins and theme zip
+        if: steps.secrets.outputs.configured == 'true'
+        run: zip -r wpcontent.zip plugins mu-plugins themes
 
       - name: Copy Zips to Server
+        if: steps.secrets.outputs.configured == 'true'
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -57,6 +85,7 @@ jobs:
           target: ${{ env.DEPLOY_PATH }}
 
       - name: Enable Maintenance Mode
+        if: steps.secrets.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.0.3
         env:
           DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
@@ -74,6 +103,7 @@ jobs:
             EOF
 
       - name: Update WordPress Core
+        if: steps.secrets.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.0.3
         env:
           DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
@@ -97,6 +127,7 @@ jobs:
             rm -rf "$DEPLOY_PATH/wordpress"
 
       - name: Update Plugins and Theme
+        if: steps.secrets.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.0.3
         env:
           DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
@@ -115,6 +146,7 @@ jobs:
             unzip -o "$DEPLOY_PATH/wpcontent.zip" -d "$DEPLOY_PATH/wp-content/"
 
       - name: Disable Maintenance Mode and Remove zips
+        if: steps.secrets.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.0.3
         env:
           DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
