@@ -4,7 +4,7 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: wordpress
-      MYSQL_DATABASE: gamestore
+      MYSQL_DATABASE: wordpress
       MYSQL_USER: wordpress
       MYSQL_PASSWORD: wordpress
     ports:
@@ -19,7 +19,7 @@ services:
       WORDPRESS_DB_HOST: mysql:3306
       WORDPRESS_DB_USER: wordpress
       WORDPRESS_DB_PASSWORD: wordpress
-      WORDPRESS_DB_NAME: gamestore
+      WORDPRESS_DB_NAME: wordpress
     ports:
       - "8000:80"
     volumes:
@@ -28,12 +28,7 @@ services:
       - ./plugins/:/var/www/html/wp-content/plugins/
       - ./mu-plugins/:/var/www/html/wp-content/mu-plugins/
       - ./.srv/custom.ini:/usr/local/etc/php/conf.d/custom.ini
-
-      # Скрываем node_modules от WordPress
-      - node_modules:/var/www/html/wp-content/plugins/blocks-gamestore/node_modules
     depends_on:
-      - mysql
-    links:
       - mysql
 
   phpmyadmin:
@@ -46,9 +41,3 @@ services:
       - "8181:80"
     depends_on:
       - mysql
-    links:
-      - mysql
-
-volumes:
-  wordpress-core:
-  node_modules:

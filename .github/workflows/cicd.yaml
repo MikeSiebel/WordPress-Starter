@@ -1,4 +1,4 @@
-name: GameStore Deploy
+name: WordPress Deploy
 
 on:
   push:
@@ -11,6 +11,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    env:
+      DEPLOY_PATH: ${{ github.event_name == 'push' && secrets.DEV_DEPLOY_PATH || secrets.PROD_DEPLOY_PATH }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@master
@@ -18,7 +21,7 @@ jobs:
       - name: Prepare WordPress Zip
         run: |
           WP_LINK=$(cat wp-version-control.cfg)
-          wget -O "./wordpress.zip" $WP_LINK
+          wget -O "./wordpress.zip" "$WP_LINK"
 
       - name: Prepare plugins and theme zip
         run: zip -r wpcontent.zip plugins mu-plugins themes
@@ -28,7 +31,8 @@ jobs:
           ls -lh wordpress.zip wpcontent.zip
           test -s wordpress.zip
           test -s wpcontent.zip
-      - name: Check SSH secrets
+
+      - name: Check deployment secrets
         shell: bash
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -40,6 +44,7 @@ jobs:
           [ -n "$SSH_USER" ] && echo "SSH_USER: OK" || echo "SSH_USER: EMPTY"
           [ -n "$SSH_PASSWORD" ] && echo "SSH_PASSWORD: OK" || echo "SSH_PASSWORD: EMPTY"
           [ -n "$SSH_PORT" ] && echo "SSH_PORT: OK" || echo "SSH_PORT: EMPTY"
+          [ -n "$DEPLOY_PATH" ] && echo "DEPLOY_PATH: OK" || echo "DEPLOY_PATH: EMPTY"
 
       - name: Copy Zips to Server
         uses: appleboy/scp-action@v1
@@ -49,53 +54,78 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           source: "wordpress.zip,wpcontent.zip"
-          target: ${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}
+          target: ${{ env.DEPLOY_PATH }}
+
       - name: Enable Maintenance Mode
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
+          envs: DEPLOY_PATH
           script: |
-            cat > "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/.maintenance" <<'EOF'
+            cat > "$DEPLOY_PATH/.maintenance" <<'EOF'
             <?php
             $upgrading = time();
             ?>
             EOF
+
       - name: Update WordPress Core
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
+          envs: DEPLOY_PATH
           script: |
-            find "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}" -type f -name "*.php" ! -name "wp-config.php" -delete
-            rm -rf "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wp-admin/" "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wp-includes/"
-            unzip -o "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wordpress.zip" -d "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/"
-            mv "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wordpress"/* "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/"
-            rm -rf "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wordpress"
+            find "$DEPLOY_PATH" -type f -name "*.php" ! -name "wp-config.php" -delete
+
+            rm -rf \
+              "$DEPLOY_PATH/wp-admin/" \
+              "$DEPLOY_PATH/wp-includes/"
+
+            unzip -o "$DEPLOY_PATH/wordpress.zip" -d "$DEPLOY_PATH/"
+
+            mv "$DEPLOY_PATH/wordpress"/* "$DEPLOY_PATH/"
+
+            rm -rf "$DEPLOY_PATH/wordpress"
 
       - name: Update Plugins and Theme
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
+          envs: DEPLOY_PATH
           script: |
-            rm -rf "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wp-content/plugins" "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wp-content/mu-plugins" "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wp-content/themes"
-            unzip -o "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wpcontent.zip" -d "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wp-content/"
-      
+            rm -rf \
+              "$DEPLOY_PATH/wp-content/plugins" \
+              "$DEPLOY_PATH/wp-content/mu-plugins" \
+              "$DEPLOY_PATH/wp-content/themes"
+
+            unzip -o "$DEPLOY_PATH/wpcontent.zip" -d "$DEPLOY_PATH/wp-content/"
+
       - name: Disable Maintenance Mode and Remove zips
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
+          envs: DEPLOY_PATH
           script: |
-            rm -f "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/.maintenance"
-            rm -f "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wpcontent.zip"
-            rm -f "${{ github.event_name == 'push' && 'dev.mzhitkua.beget.tech/public_html' || 'mzhitkua.beget.tech/public_html' }}/wordpress.zip"
+            rm -f \
+              "$DEPLOY_PATH/.maintenance" \
+              "$DEPLOY_PATH/wpcontent.zip" \
+              "$DEPLOY_PATH/wordpress.zip"
