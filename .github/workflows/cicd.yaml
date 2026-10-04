@@ -114,8 +114,6 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           envs: DEPLOY_PATH
           script: |
-            find "$DEPLOY_PATH" -type f -name "*.php" ! -name "wp-config.php" -delete
-
             rm -rf \
               "$DEPLOY_PATH/wp-admin/" \
               "$DEPLOY_PATH/wp-includes/"
