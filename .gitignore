@@ -4,3 +4,4 @@
 !/.srv/custom.ini
 
 **/node_modules/
+/.srv-gamestore-backup/
